@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Putt Quest – a 3D adventure mini golf game with 9 hand-crafted holes. Built with Three.js." />
+    <meta name="theme-color" content="#1c1233" />
+    <title>Putt Quest – Adventure Mini Golf</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23fff' stroke='%231c1233' stroke-width='5'/%3E%3Ccircle cx='24' cy='24' r='3' fill='%231c1233'/%3E%3Ccircle cx='38' cy='22' r='3' fill='%231c1233'/%3E%3Ccircle cx='31' cy='34' r='3' fill='%231c1233'/%3E%3Ccircle cx='42' cy='38' r='3' fill='%231c1233'/%3E%3C/svg%3E" />
+    <style>
+      :root {
+        --ink: #1c1233;
+        --paper: #fffaf0;
+        --sun: #ffd23f;
+        --orange: #ff8a3d;
+        --pink: #ff5c8a;
+        --teal: #2ee6b6;
+        --blue: #3d8bff;
+        --font: 'Arial Rounded MT Bold', 'Trebuchet MS', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0a1a; font-family: var(--font); color: var(--ink); user-select: none; -webkit-user-select: none; }
+      canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+      #ui { position: fixed; inset: 0; pointer-events: none; }
+      #ui > * { pointer-events: auto; }
+      .hidden { display: none !important; }
+
+      /* ---------- buttons ---------- */
+      .btn {
+        font-family: var(--font); font-weight: 800; font-size: 20px; letter-spacing: 0.5px;
+        color: var(--ink); background: linear-gradient(#ffe36e, #ffb52e);
+        border: 4px solid var(--ink); border-radius: 18px; padding: 12px 26px; cursor: pointer;
+        box-shadow: 0 6px 0 var(--ink); transition: transform .08s, box-shadow .08s, filter .15s; text-transform: uppercase;
+      }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--ink); filter: brightness(1.06); }
+      .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--ink); }
+      .btn.secondary { background: linear-gradient(#ffffff, #dfe9ff); }
+      .btn.green { background: linear-gradient(#8bffd6, #22d39a); }
+      .btn.pink { background: linear-gradient(#ffa2c0, #ff5c8a); }
+      .btn.small { font-size: 15px; padding: 8px 16px; border-width: 3px; border-radius: 14px; box-shadow: 0 4px 0 var(--ink); }
+      .btn.small:hover { box-shadow: 0 6px 0 var(--ink); }
+      .btn.small:active { box-shadow: 0 1px 0 var(--ink); transform: translateY(3px); }
+      .icon-btn {
+        width: 46px; height: 46px; font-size: 22px; display: grid; place-items: center; padding: 0;
+        border: 3px solid var(--ink); border-radius: 14px; background: linear-gradient(#ffffff, #dfe9ff); cursor: pointer;
+        box-shadow: 0 4px 0 var(--ink); transition: transform .08s, box-shadow .08s; color: var(--ink);
+      }
+      .icon-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--ink); }
+      .icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+
+      /* ---------- HUD ---------- */
+      #hud { position: absolute; inset: 0; pointer-events: none; }
+      #hud > * { pointer-events: auto; }
+      .hud-card {
+        position: absolute; top: 16px; left: 16px; background: var(--paper); border: 4px solid var(--ink); border-radius: 20px;
+        box-shadow: 0 6px 0 var(--ink); padding: 10px 18px 12px; min-width: 250px;
+      }
+      .hud-card .hole-no { font-size: 15px; letter-spacing: 3px; font-weight: 800; color: #7a6a9a; }
+      .hud-card .hole-name { font-size: 26px; font-weight: 900; line-height: 1.05; margin-top: 2px; }
+      .hud-row { display: flex; gap: 10px; margin-top: 8px; }
+      .chip { flex: 1; background: #fff; border: 3px solid var(--ink); border-radius: 12px; text-align: center; padding: 4px 8px 5px; }
+      .chip b { display: block; font-size: 26px; line-height: 1; }
+      .chip span { font-size: 11px; letter-spacing: 2px; font-weight: 800; color: #7a6a9a; }
+      .chip.par { background: #e6ffe9; }
+      .chip.strokes { background: #fff3c8; }
+      .chip.strokes.bump b { animation: bump .35s ease; }
+      @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.5); color: var(--pink); } 100% { transform: scale(1); } }
+      .hud-btns { position: absolute; top: 16px; right: 16px; display: flex; gap: 10px; }
+      .hint {
+        position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); background: rgba(28, 18, 51, 0.72); color: #fff; border-radius: 16px;
+        padding: 9px 18px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px; white-space: nowrap; transition: opacity .5s; pointer-events: none !important; backdrop-filter: blur(4px);
+      }
+      .hint kbd { background: #fff; color: var(--ink); border-radius: 6px; padding: 1px 7px; font-family: inherit; font-weight: 800; font-size: 13px; margin: 0 2px; }
+      #tip { position: absolute; left: 16px; top: 158px; max-width: 290px; background: rgba(255, 250, 240, 0.9); border: 3px solid var(--ink); border-radius: 14px; padding: 8px 12px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 0 var(--ink); pointer-events: none !important; transition: opacity .6s, transform .6s; }
+      #tip.gone { opacity: 0; transform: translateX(-20px); }
+
+      #power { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); width: min(520px, 70vw); pointer-events: none !important; transition: opacity .15s; }
+      #power.hidden { display: block !important; opacity: 0; }
+      #power .track { height: 30px; border: 4px solid var(--ink); border-radius: 18px; background: rgba(255, 255, 255, 0.85); overflow: hidden; box-shadow: 0 5px 0 var(--ink); position: relative; }
+      #power .fill { height: 100%; width: 0%; background: linear-gradient(90deg, #3cff9a, #ffe14a 55%, #ff4a4a); border-radius: 12px; }
+      #power .label { text-align: center; font-weight: 900; font-size: 15px; letter-spacing: 3px; margin-bottom: 6px; color: #fff; text-shadow: 0 2px 0 var(--ink), 0 0 6px rgba(0,0,0,.4); }
+      #power .ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgba(28,18,51,.35) calc(10% - 2px) 10%); }
+
+      #banner { position: absolute; left: 0; right: 0; top: 22%; text-align: center; pointer-events: none !important; }
+      #banner .big {
+        display: inline-block; font-size: clamp(44px, 9vw, 110px); font-weight: 900; color: #ffd23f; letter-spacing: 2px; text-transform: uppercase;
+        text-shadow: -5px -5px 0 var(--ink), 5px -5px 0 var(--ink), -5px 5px 0 var(--ink), 5px 5px 0 var(--ink), 0 -6px 0 var(--ink), 0 6px 0 var(--ink), -6px 0 0 var(--ink), 6px 0 0 var(--ink), 0 12px 0 var(--ink), 0 20px 26px rgba(0,0,0,.4);
+        transform: rotate(-3deg); animation: pop .6s cubic-bezier(.2,1.6,.4,1) both; }
+      #banner .sub { margin-top: 12px; font-size: clamp(20px, 3vw, 32px); font-weight: 800; color: #fff; text-shadow: 0 3px 0 var(--ink), 0 0 8px rgba(0,0,0,.5); animation: rise .6s .2s both; }
+      @keyframes pop { 0% { transform: scale(0.2) rotate(-14deg); opacity: 0; } 60% { transform: scale(1.15) rotate(-1deg); opacity: 1; } 100% { transform: scale(1) rotate(-3deg); opacity: 1; } }
+      @keyframes rise { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+      #banner.out { animation: fadeOut .5s forwards; }
+      @keyframes fadeOut { to { opacity: 0; transform: translateY(-20px); } }
+
+      #fly { position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; pointer-events: none !important; }
+      #fly .name { display: inline-block; background: var(--paper); border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 6px 0 var(--ink); padding: 12px 34px; animation: rise .6s both; }
+      #fly .name small { display: block; letter-spacing: 4px; font-size: 14px; color: #7a6a9a; }
+      #fly .name b { font-size: 38px; font-weight: 900; }
+      #fly .name i { display: block; font-style: normal; font-size: 16px; color: #5a4a7a; margin-top: 2px; }
+      #fly .skip { margin-top: 14px; color: #fff; font-weight: 800; text-shadow: 0 2px 0 var(--ink), 0 0 6px rgba(0,0,0,.6); letter-spacing: 1px; }
+      #toast { position: absolute; left: 50%; top: 96px; transform: translateX(-50%); pointer-events: none !important; background: var(--ink); color: #fff; padding: 10px 22px; border-radius: 16px; font-weight: 800; font-size: 20px; opacity: 0; transition: opacity .3s, transform .3s; white-space: nowrap; }
+      #toast.show { opacity: 1; transform: translateX(-50%) translateY(8px); }
+      #toast.bad { background: #c2265a; }
+
+      #crosshair { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid rgba(255,255,255,.8); box-shadow: 0 0 0 1px rgba(28,18,51,.5); pointer-events: none !important; opacity: 0.0; }
+
+      /* ---------- screens ---------- */
+      .screen { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(20,10,50,.15), rgba(20,10,50,.62)); overflow: auto; padding: 16px; }
+      .screen.solid { background: rgba(20, 10, 50, 0.66); backdrop-filter: blur(3px); }
+      .panel { background: var(--paper); border: 5px solid var(--ink); border-radius: 30px; box-shadow: 0 10px 0 var(--ink), 0 24px 50px rgba(0,0,0,.45); padding: 26px 34px 30px; text-align: center; max-width: 96vw; animation: panelIn .5s cubic-bezier(.2,1.4,.4,1) both; }
+      @keyframes panelIn { from { transform: translateY(40px) scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+
+      .logo { font-size: clamp(54px, 10vw, 118px); line-height: .92; font-weight: 900; letter-spacing: 2px; color: #ffd23f; transform: rotate(-3deg); text-transform: uppercase;
+        text-shadow: -5px -5px 0 var(--ink), 5px -5px 0 var(--ink), -5px 5px 0 var(--ink), 5px 5px 0 var(--ink), 0 -6px 0 var(--ink), 0 6px 0 var(--ink), -6px 0 0 var(--ink), 6px 0 0 var(--ink), 0 13px 0 var(--ink), 4px 13px 0 var(--ink), -4px 13px 0 var(--ink), 0 22px 30px rgba(0,0,0,.45); }
+      .logo b { color: #ff6b3d; }
+      .logo-sub { font-size: clamp(16px, 2.4vw, 26px); font-weight: 800; letter-spacing: 6px; color: #fff; text-shadow: 0 3px 0 var(--ink), 0 0 10px rgba(0,0,0,.6); margin-top: 18px; text-transform: uppercase; }
+      .menu-wrap { display: flex; flex-direction: column; align-items: center; gap: 26px; }
+      .menu-btns { display: flex; flex-direction: column; gap: 16px; align-items: stretch; min-width: 300px; }
+      .menu-btns .btn { font-size: 24px; padding: 14px 30px; }
+      .best { color: #fff; font-weight: 800; text-shadow: 0 2px 0 var(--ink); font-size: 18px; letter-spacing: 1px; }
+      .holes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0 6px; }
+      .hole-tile { border: 4px solid var(--ink); border-radius: 16px; padding: 10px 14px; text-align: left; background: #fff; cursor: pointer; box-shadow: 0 5px 0 var(--ink); transition: transform .08s, box-shadow .08s; min-width: 160px; font-family: var(--font); color: var(--ink); }
+      .hole-tile:hover { transform: translateY(-3px); box-shadow: 0 8px 0 var(--ink); }
+      .hole-tile b { display: block; font-size: 24px; line-height: 1; }
+      .hole-tile em { font-style: normal; font-weight: 800; display: block; font-size: 15px; margin-top: 3px; }
+      .hole-tile span { font-size: 13px; color: #6a5a8a; font-weight: 800; }
+      .help { text-align: left; font-size: 17px; line-height: 1.55; max-width: 520px; }
+      .help h2 { text-align: center; font-size: 30px; margin-bottom: 8px; }
+      .help li { margin-left: 22px; margin-bottom: 4px; font-weight: 700; }
+      .help kbd { background: #fff; border: 2px solid var(--ink); border-radius: 6px; padding: 0 7px; font-family: inherit; font-weight: 800; font-size: 14px; box-shadow: 0 2px 0 var(--ink); }
+
+      /* ---------- scorecard ---------- */
+      .card-title { font-size: 34px; font-weight: 900; }
+      .card-sub { font-size: 18px; font-weight: 800; color: #6a5a8a; margin: 2px 0 12px; }
+      table.sc { border-collapse: separate; border-spacing: 0; margin: 8px auto 4px; border: 4px solid var(--ink); border-radius: 16px; overflow: hidden; background: #fff; font-weight: 800; }
+      table.sc th, table.sc td { padding: 7px 12px; text-align: center; border-right: 2px solid #e2dcf0; min-width: 46px; }
+      table.sc th { background: var(--ink); color: #fff; font-size: 14px; letter-spacing: 1px; }
+      table.sc td.lbl { background: #efe9ff; text-align: left; font-size: 14px; letter-spacing: 1px; color: #5a4a7a; }
+      table.sc tr.cur td { background: #fff3c8; }
+      table.sc td.total { background: #efe9ff; font-size: 20px; }
+      table.sc tr { border-top: 2px solid #e2dcf0; }
+      table.sc td + td { border-top: 2px solid #e2dcf0; }
+      .score { display: inline-grid; place-items: center; min-width: 32px; height: 32px; font-size: 18px; }
+      .score.under { border: 3px solid #1a9e6b; border-radius: 50%; color: #0e7a50; background: #d8ffee; }
+      .score.eagle { border: 3px double #1a9e6b; border-radius: 50%; color: #fff; background: #1ab17a; }
+      .score.par { color: var(--ink); }
+      .score.over { border: 3px solid #c2265a; border-radius: 6px; color: #a5164a; background: #ffe3ec; }
+      .score.ace { border: 3px solid #b37b00; border-radius: 50%; color: #6a4700; background: #ffe17a; }
+      .card-actions { display: flex; gap: 14px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+      .result-line { margin: 6px 0 4px; font-size: 26px; font-weight: 900; }
+      .newbest { color: #d1006b; font-weight: 900; letter-spacing: 2px; animation: pulse 1s infinite alternate; }
+      @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.12); } }
+      .stars { font-size: 44px; letter-spacing: 6px; margin: 4px 0 2px; filter: drop-shadow(0 3px 0 rgba(28,18,51,.4)); }
+      .pause-btns { display: flex; flex-direction: column; gap: 14px; min-width: 300px; margin-top: 14px; }
+      .slider { display: flex; align-items: center; gap: 12px; justify-content: center; font-weight: 800; font-size: 16px; margin-top: 4px; }
+      .slider input { width: 180px; accent-color: var(--pink); }
+      #loading { position: absolute; inset: 0; display: grid; place-items: center; background: #1c1233; color: #fff; font-size: 30px; font-weight: 900; letter-spacing: 4px; transition: opacity .4s; }
+      #loading.fade { opacity: 0; pointer-events: none !important; }
+      #loading .spin { width: 56px; height: 56px; border-radius: 50%; border: 8px solid #ffffff33; border-top-color: var(--sun); animation: spin 0.9s linear infinite; margin: 0 auto 18px; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      #resume { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); }
+      @media (max-width: 900px) {
+        table.sc th, table.sc td { padding: 5px 4px; min-width: 30px; font-size: 13px; }
+        table.sc td.total { font-size: 16px; }
+        .score { min-width: 26px; height: 26px; font-size: 15px; }
+        .card-title { font-size: 28px; }
+      }
+      @media (max-width: 720px) {
+        .hud-card { min-width: 0; width: auto; max-width: calc(100vw - 196px); top: 10px; left: 10px; padding: 8px 10px 10px; } .hud-card .hole-name { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .chip b { font-size: 20px; }
+        .hud-row { gap: 5px; } .chip { min-width: 0; padding: 3px 5px 4px; border-width: 2px; } .chip span { font-size: 8px; letter-spacing: 0.5px; }
+        .hud-btns { top: 10px; right: 10px; gap: 6px; } .icon-btn { width: 38px; height: 38px; font-size: 18px; border-radius: 12px; }
+        .hint { font-size: 12px; white-space: normal; width: 92vw; text-align: center; bottom: 10px; } #tip { display: none; }
+        .holes-grid { grid-template-columns: repeat(2, 1fr); } .panel { padding: 18px 16px 22px; }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" tabindex="0"></canvas>
+    <div id="ui">
+      <div id="hud" class="hidden">
+        <div class="hud-card">
+          <div class="hole-no" id="hud-holeno">HOLE 1 / 9</div>
+          <div class="hole-name" id="hud-name">Sunny Meadow</div>
+          <div class="hud-row">
+            <div class="chip par"><b id="hud-par">2</b><span>PAR</span></div>
+            <div class="chip strokes" id="hud-strokes-chip"><b id="hud-strokes">0</b><span>STROKES</span></div>
+            <div class="chip"><b id="hud-total">0</b><span>TOTAL</span></div>
+          </div>
+        </div>
+        <div id="tip" class="gone"></div>
+        <div class="hud-btns">
+          <button class="icon-btn" id="btn-view" title="Overview (hold Space)">🗺</button>
+          <button class="icon-btn" id="btn-restart" title="Restart hole (R)">↻</button>
+          <button class="icon-btn" id="btn-mute" title="Mute (M)">🔊</button>
+          <button class="icon-btn" id="btn-pause" title="Pause (Esc)">☰</button>
+        </div>
+        <div id="power" class="hidden">
+          <div class="label" id="power-label">POWER</div>
+          <div class="track"><div class="fill" id="power-fill"></div><div class="ticks"></div></div>
+        </div>
+        <div class="hint" id="hint"><kbd>Mouse</kbd> aim &nbsp;•&nbsp; hold <kbd>Click</kbd> &amp; drag back to charge, release to putt &nbsp;•&nbsp; hold <kbd>Space</kbd> overview</div>
+        <div id="crosshair"></div>
+      </div>
+      <div id="fly" class="hidden"></div>
+      <div id="banner"></div>
+      <div id="toast"></div>
+
+      <div id="menu" class="screen hidden">
+        <div class="menu-wrap">
+          <div style="text-align:center">
+            <div class="logo">Putt<br /><b>Quest</b></div>
+            <div class="logo-sub">Adventure Mini Golf · 9 Holes</div>
+          </div>
+          <div class="menu-btns" id="menu-main">
+            <button class="btn" id="m-play">▶ Play Round</button>
+            <button class="btn secondary" id="m-select">⛳ Choose a Hole</button>
+            <button class="btn secondary" id="m-help">How to Play</button>
+            <button class="btn secondary small" id="m-mute" style="align-self:center">🔊 Sound: On</button>
+          </div>
+          <div class="best" id="menu-best"></div>
+        </div>
+      </div>
+
+      <div id="select" class="screen solid hidden">
+        <div class="panel">
+          <div class="card-title">Choose a Hole</div>
+          <div class="card-sub" id="select-sub">Jump straight to any hole – your best strokes are saved on this device.</div>
+          <div class="holes-grid" id="holes-grid"></div>
+          <div class="card-actions"><button class="btn secondary small" id="select-back">← Back</button></div>
+        </div>
+      </div>
+
+      <div id="help" class="screen solid hidden">
+        <div class="panel help">
+          <h2>How to Play</h2>
+          <ul>
+            <li><kbd>Move the mouse</kbd> to aim – the camera turns around your ball. Look up/down to change your view.</li>
+            <li><b>Hold the left button</b> and <b>drag back</b> (towards you) to set power. <b>Release</b> to putt. <kbd>Esc</kbd> or right-click cancels a swing.</li>
+            <li>Hold <kbd>Space</kbd> for a bird’s-eye overview. <kbd>←</kbd>/<kbd>→</kbd> (or <kbd>A</kbd>/<kbd>D</kbd>) fine-tune your aim.</li>
+            <li>Water, lava and falling off the course cost <b>one penalty stroke</b> and your ball returns to where you last putted.</li>
+            <li>Each hole is capped at <b>10 strokes</b>. Beat par to celebrate!</li>
+            <li><kbd>R</kbd> restarts the hole · <kbd>M</kbd> mutes · <kbd>F</kbd> replays the fly-over.</li>
+            <li><b>Choose a Hole</b> on the main menu (or <b>Jump to Hole</b> when paused) starts practice play – then <kbd>[</kbd> / <kbd>]</kbd> hop between holes.</li>
+          </ul>
+          <div class="card-actions"><button class="btn small" id="help-back">Got it!</button></div>
+        </div>
+      </div>
+
+      <div id="scorecard" class="screen solid hidden"><div class="panel" id="scorecard-panel"></div></div>
+
+      <div id="pause" class="screen solid hidden">
+        <div class="panel">
+          <div class="card-title">Paused</div>
+          <div class="card-sub" id="pause-sub"></div>
+          <div class="pause-btns">
+            <button class="btn green" id="p-resume">▶ Resume</button>
+            <button class="btn secondary" id="p-restart">↻ Restart Hole</button>
+            <button class="btn secondary" id="p-select">⛳ Jump to Hole</button>
+            <button class="btn secondary" id="p-help">? How to Play</button>
+            <button class="btn pink" id="p-menu">⌂ Main Menu</button>
+          </div>
+          <div class="slider">Mouse sensitivity <input id="sens" type="range" min="30" max="220" value="100" /></div>
+        </div>
+      </div>
+
+      <div id="loading"><div><div class="spin"></div>LOADING</div></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "putt-quest-adventure-golf",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A 3D adventure mini golf game for the browser (Vite + Three.js).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "solve": "node scripts/solve.mjs",
+    "acerate": "node scripts/acerate.mjs"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}
